@@ -1,18 +1,8 @@
 defmodule SmppProxy do
-  @moduledoc """
-  Documentation for SmppProxy.
-  """
+  def test do
+    {:ok, mc} = FakeMC.start(5051)
+    {:ok, proxy} = SmppProxy.Proxy.start_link(%{mc_port: 5050, esme_port: 5051, esme_host: "localhost"})
 
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> SmppProxy.hello
-      :world
-
-  """
-  def hello do
-    :world
+    {:ok, {mc, proxy}}
   end
 end
