@@ -12,7 +12,7 @@ defmodule SmppProxy.Proxy.ESMESession do
 
   def init(_socket, _transport, args) do
     {:ok, storage} = PduStorage.start_link()
-    {:ok, %{args|pdu_storage: storage} }
+    {:ok, %{args | pdu_storage: storage}}
   end
 
   def handle_pdu(pdu, state) do

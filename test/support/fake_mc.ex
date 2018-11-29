@@ -8,7 +8,7 @@ defmodule FakeMC do
 
   @name_prefix "fake_mc_"
   def all_session_names(port) do
-    Process.registered |> Enum.filter(fn atom -> String.contains?(to_string(atom), "#{@name_prefix}#{port}") end)
+    Process.registered() |> Enum.filter(fn atom -> String.contains?(to_string(atom), "#{@name_prefix}#{port}") end)
   end
 
   def all_session_pids(port) do
@@ -28,6 +28,7 @@ defmodule FakeMC do
     case Pdu.command_name(pdu) do
       :submit_sm ->
         resp = reply(PduFactory.submit_sm_resp(0, to_string(last_id)), pdu)
+
         pdu_to_send =
           if Pdu.field(pdu, :registered_delivery) == 1 do
             [resp, PduFactory.delivery_report_for_submit_sm(to_string(last_id), pdu)]
@@ -62,9 +63,10 @@ defmodule FakeMC do
 
   defp register_process_name(port, pid) do
     next_id =
-      case all_session_names(port) |> List.last do
+      case all_session_names(port) |> List.last() do
         nil ->
           1
+
         name ->
           id_from_process_name(name, port) + 1
       end
@@ -73,10 +75,10 @@ defmodule FakeMC do
   end
 
   defp process_name_for(port, id) do
-    "#{@name_prefix}#{port}_#{id}" |> String.to_atom
+    "#{@name_prefix}#{port}_#{id}" |> String.to_atom()
   end
 
   defp id_from_process_name(atom, port) do
-    atom |> to_string |> String.replace("#{@name_prefix}#{port}_", "") |> String.to_integer
+    atom |> to_string |> String.replace("#{@name_prefix}#{port}_", "") |> String.to_integer()
   end
 end

@@ -15,6 +15,7 @@ defmodule SmppProxy.Proxy.MCSession do
       :bind_transceiver ->
         {:ok, esme} = bind_to_esme(state.config)
         {:ok, %{state | esme: esme, mc_bind_pdu: pdu}}
+
       _ ->
         resp = Pdu.Errors.code_by_name(:RINVBNDSTS) |> Pdu.Factory.submit_sm_resp() |> Pdu.as_reply_to(pdu)
         {:ok, [resp], state}
@@ -27,6 +28,7 @@ defmodule SmppProxy.Proxy.MCSession do
         PduStorage.store(state.pdu_storage, pdu)
         Session.send_pdu(state.esme, pdu)
         {:ok, state}
+
       _ ->
         resp = Pdu.Errors.code_by_name(:RINVCMDID) |> Pdu.Factory.submit_sm_resp() |> Pdu.as_reply_to(pdu)
         {:ok, [resp], state}
@@ -46,9 +48,15 @@ defmodule SmppProxy.Proxy.MCSession do
       0 ->
         bind_resp = Pdu.Factory.bind_transceiver_resp(0, "system_id") |> Pdu.as_reply_to(mc_bind_pdu)
         {:reply, :ok, [bind_resp], %{state | mc_bind_pdu: nil, esme_bound: true}}
+
       err ->
         Logger.warn(fn -> "ESME bind error: #{Pdu.Errors.description(err)}" end)
-        bind_resp = Pdu.Errors.code_by_name(:RBINDFAIL) |> Pdu.Factory.bind_transceiver_resp("system_id") |> Pdu.as_reply_to(mc_bind_pdu)
+
+        bind_resp =
+          Pdu.Errors.code_by_name(:RBINDFAIL)
+          |> Pdu.Factory.bind_transceiver_resp("system_id")
+          |> Pdu.as_reply_to(mc_bind_pdu)
+
         {:reply, :ok, [bind_resp], %{state | mc_bind_pdu: nil}}
     end
   end
