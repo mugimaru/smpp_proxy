@@ -17,7 +17,15 @@ defmodule FakeMC do
   def handle_pdu(pdu, %{id: last_id} = state) do
     case Pdu.command_name(pdu) do
       :submit_sm ->
-        {:ok, [reply(PduFactory.submit_sm_resp(0, to_string(last_id)), pdu)], %{state | id: last_id + 1}}
+        resp = reply(PduFactory.submit_sm_resp(0, to_string(last_id)), pdu)
+        pdu_to_send =
+          if Pdu.field(pdu, :registered_delivery) == 1 do
+            [resp, PduFactory.delivery_report_for_submit_sm(to_string(last_id), pdu)]
+          else
+            [resp]
+          end
+
+        {:ok, pdu_to_send, %{state | id: last_id + 1}}
 
       :bind_transmitter ->
         {:ok, [reply(PduFactory.bind_transmitter_resp(0), pdu)], state}
@@ -28,14 +36,6 @@ defmodule FakeMC do
       _ ->
         {:ok, last_id}
     end
-  end
-
-  def send_pdu(mc, pdu) do
-    GenServer.call(mc, {:send_pdu, pdu})
-  end
-
-  def handle_call({:send_pdu, pdu}, _, %{transport: transport} = state) do
-    {:reply, SMPPEX.Session.send_pdu(transport, pdu), state}
   end
 
   defp reply(pdu, reply_to_pdu) do

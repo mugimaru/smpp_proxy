@@ -1,20 +1,47 @@
 defmodule SmppProxy.Proxy.ESMESession do
-  use SMPPEX.Session
-  alias SMPPEX.Pdu
+  alias SMPPEX.Session
+  alias SmppProxy.Proxy.PduStorage
+  use Session
 
-  def start_link(%{host: host, port: port} = args) do
+  defstruct config: nil, mc_session: nil, pdu_storage: nil
+
+  def start_link(%{host: host, port: port, mc_session: mc_session}) do
+    args = struct(__MODULE__, mc_session: mc_session, config: %{host: host, port: port})
     SMPPEX.ESME.start_link(host, port, {__MODULE__, args})
   end
 
-  def handle_resp(pdu, original_pdu, state) do
-    case Pdu.command_name(pdu) do
-      :bind_transceiver_resp ->
-        :ok = SMPPEX.Session.call(state[:mc_session], {:esme_bind_resp, pdu})
-        {:ok, state}
+  def init(_socket, _transport, args) do
+    {:ok, storage} = PduStorage.start_link()
+    {:ok, %{args|pdu_storage: storage} }
+  end
 
-      :submit_sm_resp ->
-        :ok = SMPPEX.Session.call(state[:mc_session], {:proxy_resp, pdu, original_pdu})
-        {:ok, state}
+  def handle_pdu(pdu, state) do
+    PduStorage.store(state.pdu_storage, pdu)
+    Session.send_pdu(state.mc_session, pdu)
+    {:ok, state}
+  end
+
+  def handle_unparsed_pdu(raw_pdu, state) do
+    PduStorage.store(state.pdu_storage, raw_pdu)
+    Session.send_pdu(state.mc_session, raw_pdu)
+    {:ok, state}
+  end
+
+  def handle_resp(pdu, original_pdu, state) do
+    if SMPPEX.Pdu.command_name(pdu) in [:bind_transceiver_resp, :bind_transmitter_resp, :bind_receiver_resp] do
+      :ok = Session.call(state.mc_session, {:esme_bind_resp, pdu})
+    else
+      :ok = Session.call(state.mc_session, {:proxy_resp, pdu, original_pdu})
     end
+
+    {:ok, state}
+  end
+
+  def handle_call({:proxy_resp, pdu, mc_original_pdu}, _from, state) do
+    original_pdu = PduStorage.fetch(state.pdu_storage, mc_original_pdu.ref)
+    resp = SMPPEX.Pdu.as_reply_to(pdu, original_pdu)
+    PduStorage.delete(state.pdu_storage, original_pdu.ref)
+
+    {:reply, :ok, [resp], state}
   end
 end

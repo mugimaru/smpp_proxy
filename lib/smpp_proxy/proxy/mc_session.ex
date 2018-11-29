@@ -7,7 +7,7 @@ defmodule SmppProxy.Proxy.MCSession do
 
   def init(_socket, _transport, args) do
     {:ok, storage} = PduStorage.start_link()
-    {:ok, struct(__MODULE__, config: Map.put(args, :foo, 1), pdu_storage: storage)}
+    {:ok, struct(__MODULE__, config: args, pdu_storage: storage)}
   end
 
   def handle_pdu(pdu, %{esme_bound: false} = state) do
@@ -22,7 +22,6 @@ defmodule SmppProxy.Proxy.MCSession do
   end
 
   def handle_pdu(pdu, %{esme_bound: true} = state) do
-
     case Pdu.command_name(pdu) do
       :submit_sm ->
         PduStorage.store(state.pdu_storage, pdu)
