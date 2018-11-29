@@ -52,7 +52,7 @@ defmodule SmppProxyTest do
     :ok = SMPPEX.MC.stop(mc)
   end
 
-  test "proxies delivery report", %{esme: esme, proxy: proxy, mc: mc}  do
+  test "proxies delivery report", %{esme: esme, proxy: proxy, mc: mc} do
     {:ok, bind_resp} = Sync.request(esme, PduFactory.bind_transceiver("systemid", "password"))
     assert bind_resp.command_status == 0
     submit_sm = PduFactory.submit_sm(@from, @to, @text, 1)
@@ -62,6 +62,21 @@ defmodule SmppProxyTest do
     [pdu: %Pdu{} = dr] = SMPPEX.ESME.Sync.wait_for_pdus(esme, 1000)
     assert Pdu.command_name(dr) == :deliver_sm
     assert Pdu.field(dr, :receipted_message_id) == Pdu.field(resp, :message_id)
+
+    :ok = GenServer.stop(proxy)
+    :ok = SMPPEX.MC.stop(mc)
+  end
+
+  test "proxies mc deliveries", %{esme: esme, proxy: proxy, mc: mc} do
+    {:ok, bind_resp} = Sync.request(esme, PduFactory.bind_transceiver("systemid", "password"))
+    assert bind_resp.command_status == 0
+
+    assert [{_, mc_session}] = FakeMC.all_session_pids(@mc_port)
+
+    deliver_sm = PduFactory.deliver_sm("from", "to", "msg")
+    :ok = FakeMC.send_pdu(mc_session, deliver_sm)
+    [pdu: %Pdu{} = received_pdu] = SMPPEX.ESME.Sync.wait_for_pdus(esme, 1000)
+    assert Pdu.field(received_pdu, :short_message) == Pdu.field(deliver_sm, :short_message)
 
     :ok = GenServer.stop(proxy)
     :ok = SMPPEX.MC.stop(mc)
