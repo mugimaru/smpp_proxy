@@ -5,9 +5,9 @@ defmodule SmppProxy.Proxy.ESMESession do
 
   defstruct config: nil, mc_session: nil, pdu_storage: nil
 
-  def start_link(%{host: host, port: port, mc_session: mc_session}) do
-    args = struct(__MODULE__, mc_session: mc_session, config: %{host: host, port: port})
-    SMPPEX.ESME.start_link(host, port, {__MODULE__, args})
+  def start_link({mc_session, %SmppProxy.Config{} = config}) do
+    args = struct(__MODULE__, mc_session: mc_session, config: config)
+    SMPPEX.ESME.start_link(config.esme_host, config.esme_port, {__MODULE__, args})
   end
 
   def init(_socket, _transport, args) do

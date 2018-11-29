@@ -8,6 +8,7 @@ defmodule SmppProxy.MixProject do
       elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
+      escript: [main_module: SmppProxy.CLI],
       deps: deps()
     ]
   end
@@ -23,7 +24,8 @@ defmodule SmppProxy.MixProject do
   defp deps do
     [
       {:smppex, "~> 2.0"},
-      {:credo, "~> 0.10.0", only: [:dev, :test], runtime: false}
+      {:credo, "~> 0.10.0", only: [:dev, :test], runtime: false},
+      {:optimus, "~> 0.1.0"}
     ]
   end
 

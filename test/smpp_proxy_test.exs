@@ -13,9 +13,20 @@ defmodule SmppProxyTest do
   @to "to"
   @text "text"
 
+  @config SmppProxy.Config.new(%{
+    bind_mode: :trx,
+    mc_port: @proxy_mc_port,
+    esme_port: @mc_port,
+    esme_host: @host,
+    esme_password: "pwd2",
+    esme_system_id: "panda",
+    mc_password: "pwd",
+    mc_system_id: "panda"
+  })
+
   setup do
     {:ok, mc} = FakeMC.start(@mc_port)
-    {:ok, proxy} = SmppProxy.Proxy.start_link(%{mc_port: @proxy_mc_port, esme_port: @mc_port, esme_host: @host})
+    {:ok, proxy} = SmppProxy.Proxy.start_link(@config)
     {:ok, esme} = Sync.start_link(@host, @proxy_mc_port)
 
     {:ok, [proxy: proxy, esme: esme, mc: mc]}
