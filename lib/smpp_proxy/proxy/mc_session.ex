@@ -16,10 +16,15 @@ defmodule SmppProxy.Proxy.MCSession do
 
   def handle_pdu(pdu, %{esme_bound: false} = state) do
     if Pdu.command_name(pdu) == Config.bind_command_name(state.config) do
-      {:ok, esme} = SmppProxy.Proxy.ESMESession.start_link({self(), state.config})
-      :ok = Session.send_pdu(esme, PduFactory.bind_transceiver(state.config.esme_system_id, state.config.esme_password))
+      if bind_account_matches?(pdu, state.config) do
+        {:ok, esme} = SmppProxy.Proxy.ESMESession.start_link({self(), state.config})
+        :ok = Session.send_pdu(esme, PduFactory.bind_transceiver(state.config.esme_system_id, state.config.esme_password))
 
-      {:ok, %{state | esme: esme, mc_bind_pdu: pdu}}
+        {:ok, %{state | esme: esme, mc_bind_pdu: pdu}}
+      else
+        resp = PduErrors.code_by_name(:RBINDFAIL) |> PduFactory.submit_sm_resp() |> Pdu.as_reply_to(pdu)
+        {:ok, [resp], state}
+      end
     else
       resp = PduErrors.code_by_name(:RINVBNDSTS) |> PduFactory.submit_sm_resp() |> Pdu.as_reply_to(pdu)
       {:ok, [resp], state}
@@ -64,5 +69,9 @@ defmodule SmppProxy.Proxy.MCSession do
     resp = Pdu.as_reply_to(pdu, original_pdu)
     PduStorage.delete(state.pdu_storage, original_pdu.ref)
     {:reply, :ok, [resp], state}
+  end
+
+  defp bind_account_matches?(bind_pdu, %{mc_system_id: id, mc_password: pwd}) do
+    Pdu.field(bind_pdu, :system_id) == id && Pdu.field(bind_pdu, :password) == pwd
   end
 end

@@ -15,13 +15,13 @@ defmodule FakeMC do
     port |> all_session_names() |> Enum.map(fn name -> {name, Process.whereis(name)} end)
   end
 
-  def start(port) do
-    SMPPEX.MC.start({__MODULE__, [port: port]}, transport_opts: [port: port])
+  def start(port, config \\ %{}) do
+    SMPPEX.MC.start({__MODULE__, Map.put(config, :port, port)}, transport_opts: [port: port])
   end
 
-  def init(socket, transport, args) do
+  def init(_socket, _transport, args) do
     register_process_name(args[:port], self())
-    {:ok, %{transport: transport, socket: socket, id: 0}}
+    {:ok, Map.put(args, :id, 0)}
   end
 
   def handle_pdu(pdu, %{id: last_id} = state) do
@@ -38,11 +38,15 @@ defmodule FakeMC do
 
         {:ok, pdu_to_send, %{state | id: last_id + 1}}
 
-      :bind_transmitter ->
-        {:ok, [reply(PduFactory.bind_transmitter_resp(0), pdu)], state}
-
       :bind_transceiver ->
-        {:ok, [reply(PduFactory.bind_transceiver_resp(0), pdu)], state}
+        resp =
+          if bind_account_matches?(pdu, state) do
+            reply(PduFactory.bind_transceiver_resp(0), pdu)
+          else
+            reply(PduFactory.bind_transceiver_resp(SMPPEX.Pdu.Errors.code_by_name(:RBINDFAIL)), pdu)
+          end
+
+        {:ok, [resp], state}
 
       _ ->
         {:ok, last_id}
@@ -81,4 +85,9 @@ defmodule FakeMC do
   defp id_from_process_name(atom, port) do
     atom |> to_string |> String.replace("#{@name_prefix}#{port}_", "") |> String.to_integer()
   end
+
+  defp bind_account_matches?(bind_pdu, %{system_id: id, password: pwd}) do
+    Pdu.field(bind_pdu, :system_id) == id && Pdu.field(bind_pdu, :password) == pwd
+  end
+  defp bind_account_matches?(bind_pdu, _), do: true
 end
