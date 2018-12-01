@@ -17,4 +17,8 @@ defmodule SmppProxy.Proxy do
     :ok = SMPPEX.MC.stop(state.mc)
     :stop
   end
+
+  def allowed_to_proxy?(%{senders_whitelist: sw, receivers_whitelist: rw}, sender: s, receiver: r) do
+    (sw == [] || s in sw) && (rw == [] || r in rw)
+  end
 end

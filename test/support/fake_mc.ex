@@ -89,5 +89,6 @@ defmodule FakeMC do
   defp bind_account_matches?(bind_pdu, %{system_id: id, password: pwd}) do
     Pdu.field(bind_pdu, :system_id) == id && Pdu.field(bind_pdu, :password) == pwd
   end
-  defp bind_account_matches?(bind_pdu, _), do: true
+
+  defp bind_account_matches?(_bind_pdu, _), do: true
 end

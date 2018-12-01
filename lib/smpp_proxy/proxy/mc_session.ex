@@ -2,8 +2,9 @@ defmodule SmppProxy.Proxy.MCSession do
   alias SMPPEX.{Pdu, Session}
   alias Pdu.Factory, as: PduFactory
   alias Pdu.Errors, as: PduErrors
-  alias SmppProxy.Config
-  alias SmppProxy.Proxy.PduStorage
+  alias SmppProxy.{Config, Proxy.PduStorage}
+
+  import SmppProxy.FactoryHelpers, only: [build_response_pdu: 2, build_response_pdu: 3]
 
   use Session
 
@@ -15,50 +16,51 @@ defmodule SmppProxy.Proxy.MCSession do
   end
 
   def handle_pdu(pdu, %{esme_bound: false} = state) do
-    if Pdu.command_name(pdu) == Config.bind_command_name(state.config) do
-      if bind_account_matches?(pdu, state.config) do
-        {:ok, esme} = SmppProxy.Proxy.ESMESession.start_link({self(), state.config})
-        :ok = Session.send_pdu(esme, PduFactory.bind_transceiver(state.config.esme_system_id, state.config.esme_password))
+    if Pdu.command_name(pdu) == Config.bind_command_name(state.config) && bind_account_matches?(pdu, state.config) do
+      {:ok, esme} = SmppProxy.Proxy.ESMESession.start_link({self(), state.config})
 
-        {:ok, %{state | esme: esme, mc_bind_pdu: pdu}}
-      else
-        resp = PduErrors.code_by_name(:RBINDFAIL) |> PduFactory.submit_sm_resp() |> Pdu.as_reply_to(pdu)
-        {:ok, [resp], state}
-      end
+      :ok =
+        Session.send_pdu(
+          esme,
+          apply(PduFactory, Config.bind_command_name(state.config), [
+            state.config.esme_system_id,
+            state.config.esme_password
+          ])
+        )
+
+      {:ok, %{state | esme: esme, mc_bind_pdu: pdu}}
     else
-      resp = PduErrors.code_by_name(:RINVBNDSTS) |> PduFactory.submit_sm_resp() |> Pdu.as_reply_to(pdu)
+      {:ok, resp} = build_response_pdu(pdu, :RBINDFAIL)
       {:ok, [resp], state}
     end
   end
 
   def handle_pdu(pdu, %{esme_bound: true} = state) do
-    case Pdu.command_name(pdu) do
-      :submit_sm ->
-        PduStorage.store(state.pdu_storage, pdu)
-        Session.send_pdu(state.esme, pdu)
-        {:ok, state}
+    if allowed_to_proxy?(pdu, state.config) do
+      PduStorage.store(state.pdu_storage, pdu)
+      Session.send_pdu(state.esme, pdu)
+      {:ok, state}
+    else
+      case build_response_pdu(pdu, :RINVSRCADR) do
+        {:ok, resp} ->
+          {:ok, [resp], state}
 
-      _ ->
-        resp = PduErrors.code_by_name(:RINVCMDID) |> PduFactory.submit_sm_resp() |> Pdu.as_reply_to(pdu)
-        {:ok, [resp], state}
+        {:error, _} ->
+          Logger.warn(fn -> "Unable to build response; unknown pdu: #{inspect(pdu)}" end)
+          {:ok, state}
+      end
     end
   end
 
   def handle_call({:esme_bind_resp, pdu}, _from, %{mc_bind_pdu: mc_bind_pdu} = state) do
     case Pdu.command_status(pdu) do
       0 ->
-        bind_resp =
-          PduFactory
-          |> apply(Config.bind_resp_command_name(state.config), [0, state.config.mc_system_id])
-          |> Pdu.as_reply_to(mc_bind_pdu)
+        {:ok, bind_resp} = build_response_pdu(mc_bind_pdu, 0, [Pdu.field(mc_bind_pdu, :system_id)])
         {:reply, :ok, [bind_resp], %{state | mc_bind_pdu: nil, esme_bound: true}}
 
       err ->
         Logger.warn(fn -> "ESME bind error: #{Pdu.Errors.description(err)}" end)
-        bind_resp =
-          PduFactory
-          |> apply(Config.bind_resp_command_name(state.config), [PduErrors.code_by_name(:RBINDFAIL), state.config.mc_system_id])
-          |> Pdu.as_reply_to(mc_bind_pdu)
+        {:ok, bind_resp} = build_response_pdu(mc_bind_pdu, :RBINDFAIL, [Pdu.field(mc_bind_pdu, :system_id)])
 
         {:reply, :ok, [bind_resp], %{state | mc_bind_pdu: nil}}
     end
@@ -74,4 +76,10 @@ defmodule SmppProxy.Proxy.MCSession do
   defp bind_account_matches?(bind_pdu, %{mc_system_id: id, mc_password: pwd}) do
     Pdu.field(bind_pdu, :system_id) == id && Pdu.field(bind_pdu, :password) == pwd
   end
+
+  defp allowed_to_proxy?(%{mandatory: %{source_addr: source, destination_addr: dest}}, config) do
+    SmppProxy.Proxy.allowed_to_proxy?(config, sender: source, receiver: dest)
+  end
+
+  defp allowed_to_proxy?(_pdu, _config), do: true
 end

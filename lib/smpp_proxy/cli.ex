@@ -1,5 +1,4 @@
 defmodule SmppProxy.CLI do
-
   def main(args \\ []) do
     config()
     |> Optimus.parse!(args)
@@ -23,13 +22,13 @@ defmodule SmppProxy.CLI do
           short: "-b",
           long: "--bind-mode",
           help: "MC/ESME bind mode. `trx` - transceiver, `rx` - receiver, `tx` - transmitter.",
-          parser: (fn(v) ->
+          parser: fn v ->
             if v in ["trx", "rx", "tx"] do
               {:ok, String.to_atom(v)}
             else
               {:error, "Unknown bind mode"}
             end
-          end),
+          end,
           default: :trx
         ],
         mc_port: [
@@ -74,6 +73,18 @@ defmodule SmppProxy.CLI do
           long: "--esme-password",
           help: "Password for `esme-id`",
           required: true
+        ],
+        senders_whitelist: [
+          short: "-S",
+          long: "--clients-whitelist",
+          help: "Only allow specified senders (submits from source addr / delivers to destination addr)",
+          multiple: true
+        ],
+        receivers_whitelist: [
+          short: "-R",
+          long: "--services-whitelist",
+          help: "Only allow specified receivers (submits to destination addr / delivers from destination addr)",
+          multiple: true
         ]
       ]
     )

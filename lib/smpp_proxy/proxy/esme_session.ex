@@ -3,6 +3,8 @@ defmodule SmppProxy.Proxy.ESMESession do
   alias SmppProxy.Proxy.PduStorage
   use Session
 
+  import SmppProxy.FactoryHelpers, only: [build_response_pdu: 2, build_response_pdu: 3]
+
   defstruct config: nil, mc_session: nil, pdu_storage: nil
 
   def start_link({mc_session, %SmppProxy.Config{} = config}) do
@@ -16,9 +18,20 @@ defmodule SmppProxy.Proxy.ESMESession do
   end
 
   def handle_pdu(pdu, state) do
-    PduStorage.store(state.pdu_storage, pdu)
-    Session.send_pdu(state.mc_session, pdu)
-    {:ok, state}
+    if allowed_to_proxy?(pdu, state.config) do
+      PduStorage.store(state.pdu_storage, pdu)
+      Session.send_pdu(state.mc_session, pdu)
+      {:ok, state}
+    else
+      case build_response_pdu(pdu, 0) do
+        {:ok, resp} ->
+          {:ok, [resp], state}
+
+        {:error, _} ->
+          Logger.warn(fn -> "Unable to build response; unknown pdu: #{inspect(pdu)}" end)
+          {:ok, state}
+      end
+    end
   end
 
   def handle_unparsed_pdu(raw_pdu, state) do
@@ -44,4 +57,10 @@ defmodule SmppProxy.Proxy.ESMESession do
 
     {:reply, :ok, [resp], state}
   end
+
+  defp allowed_to_proxy?(%{mandatory: %{source_addr: source, destination_addr: dest}}, config) do
+    SmppProxy.Proxy.allowed_to_proxy?(config, sender: dest, receiver: source)
+  end
+
+  defp allowed_to_proxy?(_pdu, _config), do: true
 end

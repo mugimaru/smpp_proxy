@@ -1,5 +1,16 @@
 defmodule SmppProxy.Config do
-  defstruct [:bind_mode, :mc_port, :mc_system_id, :mc_password, :esme_host, :esme_port, :esme_system_id, :esme_password]
+  defstruct [
+    :bind_mode,
+    :mc_port,
+    :mc_system_id,
+    :mc_password,
+    :esme_host,
+    :esme_port,
+    :esme_system_id,
+    :esme_password,
+    :senders_whitelist,
+    :receivers_whitelist
+  ]
 
   def new(enum) do
     struct(__MODULE__, enum)
