@@ -17,7 +17,7 @@ defmodule SmppProxy.Proxy.MCSession do
 
   def handle_pdu(pdu, %{esme_bound: false} = state) do
     if Pdu.command_name(pdu) == Config.bind_command_name(state.config) && bind_account_matches?(pdu, state.config) do
-      {:ok, esme} = SmppProxy.Proxy.ESMESession.start_link({self(), state.config})
+      {:ok, esme} = SmppProxy.Proxy.ESME.start_session({self(), state.config})
 
       :ok =
         Session.send_pdu(
