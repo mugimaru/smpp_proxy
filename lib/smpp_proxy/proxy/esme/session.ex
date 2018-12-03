@@ -21,7 +21,7 @@ defmodule SmppProxy.Proxy.ESME.Session do
   end
 
   @impl true
-  def handle_unparsed_pdu(raw_pdu, state), do: handle_pdu(raw_pdu, state)
+  def handle_unparsed_pdu(raw_pdu, _error, state), do: handle_pdu(raw_pdu, state)
 
   @impl true
   def handle_pdu(pdu, state) do

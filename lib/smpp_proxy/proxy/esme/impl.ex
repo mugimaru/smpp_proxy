@@ -1,9 +1,6 @@
 defmodule SmppProxy.Proxy.ESME.Impl do
   @moduledoc """
-  * `MC` - target message center;
-  * `ESME` - client that binds to proxy app in order to send messages to `MC`;
-  * `Proxy MC` - message center of proxy app;
-  * `Proxy ESME` - client that binds to `MC`;
+  An implementation of logic behind proxy ESME session (`SmppProxy.Proxy.ESME.Session`).
   """
 
   alias SMPPEX.{Pdu, RawPdu, Session}
@@ -11,21 +8,10 @@ defmodule SmppProxy.Proxy.ESME.Impl do
   alias SmppProxy.Proxy.PduStorage
 
   @doc """
-  Checks if proxy ESME is allowed to proxy specific pdu.
-  """
-  @spec allowed_to_proxy?(Pdu.t(), Config.t()) :: boolean
-
-  def allowed_to_proxy?(%{mandatory: %{source_addr: source, destination_addr: dest}}, config) do
-    SmppProxy.Proxy.allowed_to_proxy?(config, sender: dest, receiver: source)
-  end
-
-  def allowed_to_proxy?(_pdu, _config), do: true
-
-
-  @doc """
   Attempts to proxy pdu from MC to ESME.
   """
-  @spec handle_pdu_from_mc(Pdu.t() | RawPdu.t(), %{pdu_storage: pid, mc_session: pid, config: Config.t()}) :: {:ok, :proxied} | {:error, Pdu.t()} | {:error, :unknown_pdu}
+  @spec handle_pdu_from_mc(Pdu.t() | RawPdu.t(), %{pdu_storage: pid, mc_session: pid, config: Config.t()}) ::
+          {:ok, :proxied} | {:error, Pdu.t()} | {:error, :unknown_pdu}
 
   def handle_pdu_from_mc(pdu, %{pdu_storage: pdu_storage, mc_session: mc_session, config: config}) do
     if allowed_to_proxy?(pdu, config) do
@@ -47,12 +33,8 @@ defmodule SmppProxy.Proxy.ESME.Impl do
   @doc "Handles response pdu from MC."
   @spec handle_resp_from_mc(resp_pdu :: Pdu.t(), original_pdu :: Pdu.t(), mc_session :: pid) :: :ok
 
-  def handle_resp_from_mc(pdu, original_pdu, mc_session) do
-    if SMPPEX.Pdu.command_name(pdu) in [:bind_transceiver_resp, :bind_transmitter_resp, :bind_receiver_resp] do
-      :ok = Session.call(mc_session, {:esme_bind_resp, pdu})
-    else
-      :ok = Session.call(mc_session, {:proxy_resp, pdu, original_pdu})
-    end
+  def handle_resp_from_mc(pdu, original_pdu, proxy_mc_session) do
+    SmppProxy.Proxy.MC.handle_mc_resp(proxy_mc_session, pdu, original_pdu)
   end
 
   @doc "Handles response pdu from ESME."
@@ -65,4 +47,13 @@ defmodule SmppProxy.Proxy.ESME.Impl do
 
     {:ok, resp}
   end
+
+  defp allowed_to_proxy?(%{mandatory: %{source_addr: source, destination_addr: dest}}, %{
+         senders_whitelist: sw,
+         receivers_whitelist: rw
+       }) do
+    (sw == [] || dest in sw) && (rw == [] || source in rw)
+  end
+
+  defp allowed_to_proxy?(_pdu, _config), do: true
 end

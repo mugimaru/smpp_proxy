@@ -13,17 +13,17 @@ defmodule SmppProxy.Config do
   ]
 
   @type t :: %__MODULE__{
-    bind_mode: :trx | :tx | :rx,
-    mc_port: integer,
-    mc_system_id: String.t(),
-    mc_password: String.t(),
-    esme_host: String.t(),
-    esme_port: integer,
-    esme_system_id: String.t(),
-    esme_password: String.t(),
-    senders_whitelist: list(String.t()),
-    receivers_whitelist: list(String.t())
-  }
+          bind_mode: :trx | :tx | :rx,
+          mc_port: integer,
+          mc_system_id: String.t(),
+          mc_password: String.t(),
+          esme_host: String.t(),
+          esme_port: integer,
+          esme_system_id: String.t(),
+          esme_password: String.t(),
+          senders_whitelist: list(String.t()),
+          receivers_whitelist: list(String.t())
+        }
 
   def new(enum) do
     struct(__MODULE__, enum)
