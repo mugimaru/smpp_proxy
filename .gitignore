@@ -22,3 +22,5 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 smpp_proxy-*.tar
 
+# Ignore escript (built via "mix escript.build").
+smpp_proxy
