@@ -4,7 +4,8 @@ defmodule SmppProxy.Proxy.MC.Session do
 
   use Session
 
-  defstruct config: nil, mc_bind_pdu: nil, esme: nil, pdu_storage: nil, esme_bound: false
+  defstruct config: nil, mc_bind_pdu: nil, esme: nil, pdu_storage: nil, bind_state: :unbound
+  @type bind_state :: :bound | :unbound
 
   @impl true
   def init(_socket, _transport, %SmppProxy.Config{} = args) do
@@ -14,41 +15,28 @@ defmodule SmppProxy.Proxy.MC.Session do
 
   @impl true
   def handle_unparsed_pdu(raw_pdu, _error, state) do
-    case SmppProxy.FactoryHelpers.build_response_pdu(raw_pdu, :RSYSERR) do
-      {:ok, pdu} ->
-        {:ok, [pdu], state}
-
-      _ ->
-        Logger.warn("MC.Session has received unknown PDU #{inspect(raw_pdu)}")
-        {:ok, state}
-    end
+    {:ok, [SmppProxy.FactoryHelpers.build_response_pdu(raw_pdu, :RSYSERR)], state}
   end
 
   @impl true
-  def handle_pdu(pdu, %{esme_bound: false} = state) do
-    case Impl.handle_pdu_from_esme_in_unbound_state(pdu, state.config) do
+  def handle_pdu(pdu, %{bind_state: :unbound} = state) do
+    case Impl.handle_bind_request(pdu, state.config) do
       {:ok, proxy_esme_session} ->
         {:ok, %{state | esme: proxy_esme_session, mc_bind_pdu: pdu}}
 
       {:error, %Pdu{} = resp} ->
         {:ok, [resp], state}
-
-      {:error, _} ->
-        {:ok, state}
     end
   end
 
   @impl true
-  def handle_pdu(pdu, %{esme_bound: true} = state) do
-    case Impl.handle_pdu_from_esme_in_bound_state(pdu, state.pdu_storage, state.esme, state.config) do
+  def handle_pdu(pdu, %{bind_state: :bound} = state) do
+    case Impl.proxy_pdu(pdu, state.pdu_storage, state.esme, state.config) do
       {:ok, :proxied} ->
         {:ok, state}
 
       {:error, %Pdu{} = resp} ->
         {:ok, [resp], state}
-
-      {:error, _} ->
-        {:ok, state}
     end
   end
 
@@ -69,7 +57,7 @@ defmodule SmppProxy.Proxy.MC.Session do
     if SMPPEX.Pdu.command_name(pdu) in [:bind_transceiver_resp, :bind_transmitter_resp, :bind_receiver_resp] do
       case Impl.handle_mc_bind_resp(pdu, state.mc_bind_pdu) do
         {:ok, bind_resp} ->
-          {:reply, :ok, [bind_resp], %{state | mc_bind_pdu: nil, esme_bound: true}}
+          {:reply, :ok, [bind_resp], %{state | mc_bind_pdu: nil, bind_state: :bound}}
 
         {:error, bind_resp} ->
           {:reply, :ok, [bind_resp], %{state | mc_bind_pdu: nil}}

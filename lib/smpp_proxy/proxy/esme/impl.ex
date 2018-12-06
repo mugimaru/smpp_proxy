@@ -11,7 +11,7 @@ defmodule SmppProxy.Proxy.ESME.Impl do
   Attempts to proxy pdu from MC to ESME.
   """
   @spec handle_pdu_from_mc(Pdu.t() | RawPdu.t(), %{pdu_storage: pid, mc_session: pid, config: Config.t()}) ::
-          {:ok, :proxied} | {:error, Pdu.t()} | {:error, :unknown_pdu}
+          {:ok, :proxied} | {:error, Pdu.t()}
 
   def handle_pdu_from_mc(pdu, %{pdu_storage: pdu_storage, mc_session: mc_session, config: config}) do
     if allowed_to_proxy?(pdu, config) do
@@ -20,13 +20,7 @@ defmodule SmppProxy.Proxy.ESME.Impl do
 
       {:ok, :proxied}
     else
-      case FactoryHelpers.build_response_pdu(pdu, 0) do
-        {:ok, resp} ->
-          {:error, resp}
-
-        {:error, _} ->
-          {:error, :unknown_pdu}
-      end
+      {:error, FactoryHelpers.build_response_pdu(pdu, 0)}
     end
   end
 

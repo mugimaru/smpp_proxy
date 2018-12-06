@@ -22,14 +22,7 @@ defmodule SmppProxy.Proxy.ESME.Session do
 
   @impl true
   def handle_unparsed_pdu(raw_pdu, _error, state) do
-    case SmppProxy.FactoryHelpers.build_response_pdu(raw_pdu, :RSYSERR) do
-      {:ok, pdu} ->
-        {:ok, [pdu], state}
-
-      _ ->
-        Logger.warn("ESME.Session has received unknown PDU #{inspect(raw_pdu)}")
-        {:ok, state}
-    end
+    {:ok, [SmppProxy.FactoryHelpers.build_response_pdu(raw_pdu, :RSYSERR)], state}
   end
 
   @impl true
@@ -40,10 +33,6 @@ defmodule SmppProxy.Proxy.ESME.Session do
 
       {:error, %SMPPEX.Pdu{} = resp_pdu} ->
         {:ok, [resp_pdu], state}
-
-      {:error, :unknown_pdu} ->
-        Logger.warn(fn -> "Don't know how to build a response for #{inspect(pdu)}." end)
-        {:ok, state}
     end
   end
 
