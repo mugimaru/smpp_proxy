@@ -53,6 +53,15 @@ defmodule FakeMC do
     end
   end
 
+  def handle_socket_closed(state) do
+    {:normal, state}
+  end
+
+  def terminate(reason, _lost_pdus, _st) do
+    Logger.info("Terminating FakeMC; reason #{inspect(reason)}")
+    :stop
+  end
+
   def send_pdu(pid, pdu) do
     SMPPEX.Session.call(pid, {:send_pdu, pdu})
   end

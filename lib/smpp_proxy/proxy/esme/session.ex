@@ -21,7 +21,16 @@ defmodule SmppProxy.Proxy.ESME.Session do
   end
 
   @impl true
-  def handle_unparsed_pdu(raw_pdu, _error, state), do: handle_pdu(raw_pdu, state)
+  def handle_unparsed_pdu(raw_pdu, _error, state) do
+    case SmppProxy.FactoryHelpers.build_response_pdu(raw_pdu, :RSYSERR) do
+      {:ok, pdu} ->
+        {:ok, [pdu], state}
+
+      _ ->
+        Logger.warn("ESME.Session has received unknown PDU #{inspect(raw_pdu)}")
+        {:ok, state}
+    end
+  end
 
   @impl true
   def handle_pdu(pdu, state) do
@@ -42,6 +51,13 @@ defmodule SmppProxy.Proxy.ESME.Session do
   def handle_resp(pdu, original_pdu, %{mc_session: mc} = state) do
     :ok = Impl.handle_resp_from_mc(pdu, original_pdu, mc)
     {:ok, state}
+  end
+
+  @impl true
+  def terminate(reason, _lost_pdus, _st) do
+    # TODO: unbind
+    Logger.info("Terminating ESME.Session(#{inspect(self())}); reason #{inspect(reason)}")
+    :stop
   end
 
   @impl true
