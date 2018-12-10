@@ -48,6 +48,9 @@ defmodule FakeMC do
 
         {:ok, [resp], state}
 
+      :unbind ->
+        {:ok, [PduFactory.unbind_resp(0) |> Pdu.as_reply_to(pdu)], state}
+
       _ ->
         {:ok, last_id}
     end

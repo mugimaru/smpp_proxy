@@ -5,7 +5,16 @@ defmodule SmppProxy.Proxy.MC.Session do
   use Session
 
   defstruct config: nil, mc_bind_pdu: nil, esme: nil, pdu_storage: nil, bind_state: :unbound
+
   @type bind_state :: :bound | :unbound
+
+  @type state :: %{
+    config: SmppProxy.Config.t(),
+    mc_bind_pdu: Pdu.t(),
+    esme: pid,
+    pdu_storage: pid,
+    bind_state: bind_state()
+  }
 
   @impl true
   def init(_socket, _transport, %SmppProxy.Config{} = args) do
@@ -20,6 +29,8 @@ defmodule SmppProxy.Proxy.MC.Session do
 
   @impl true
   def handle_pdu(pdu, %{bind_state: :unbound} = state) do
+    Logger.debug(fn -> "ProxyMC: handling bind request" end)
+
     case Impl.handle_bind_request(pdu, state.config) do
       {:ok, proxy_esme_session} ->
         {:ok, %{state | esme: proxy_esme_session, mc_bind_pdu: pdu}}
@@ -57,9 +68,15 @@ defmodule SmppProxy.Proxy.MC.Session do
     if SMPPEX.Pdu.command_name(pdu) in [:bind_transceiver_resp, :bind_transmitter_resp, :bind_receiver_resp] do
       case Impl.handle_mc_bind_resp(pdu, state.mc_bind_pdu) do
         {:ok, bind_resp} ->
+          Logger.debug(fn -> "ProxyMC(#{state.bind_state}): ProxyESME bound" end)
           {:reply, :ok, [bind_resp], %{state | mc_bind_pdu: nil, bind_state: :bound}}
 
         {:error, bind_resp} ->
+          Logger.debug(fn ->
+            error_desc = SMPPEX.Pdu.command_status(pdu) |> SMPPEX.Pdu.Errors.description()
+            "ProxyMC(#{state.bind_state}): ProxyESME bind error #{error_desc}"
+          end)
+
           {:reply, :ok, [bind_resp], %{state | mc_bind_pdu: nil}}
       end
     else
