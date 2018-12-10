@@ -1,11 +1,12 @@
 defmodule SmppProxy.CLI do
   def main(args \\ []) do
-    config()
-    |> Optimus.parse!(args)
-    |> Map.get(:options)
-    |> SmppProxy.Config.new()
-    |> SmppProxy.Proxy.start_link()
+    app_config = config() |> Optimus.parse!(args)
 
+    if app_config.flags[:debug] do
+      Logger.configure(level: :debug) |> IO.inspect(label: :debug_flag)
+    end
+
+    SmppProxy.Config.new(app_config.options) |> SmppProxy.Proxy.start_link()
     :timer.sleep(:infinity)
   end
 
@@ -17,6 +18,13 @@ defmodule SmppProxy.CLI do
       author: "Nikita Babushkin n.babushkin@fun-box.ru",
       allow_unknown_args: false,
       parse_double_dash: true,
+      flags: [
+        debug: [
+          long: "--debug",
+          help: "Enables debug logging",
+          multiple: false
+        ]
+      ],
       options: [
         bind_mode: [
           short: "-b",
