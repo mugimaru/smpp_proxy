@@ -24,6 +24,7 @@ defmodule SmppProxy.MixProject do
   defp deps do
     [
       {:smppex, "~> 2.0"},
+      {:ex_doc, "~> 0.18.0", only: :dev, runtime: false},
       {:credo, "~> 0.10.0", only: [:dev, :test], runtime: false},
       {:optimus, "~> 0.1.0"}
     ]

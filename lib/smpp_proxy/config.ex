@@ -1,4 +1,8 @@
 defmodule SmppProxy.Config do
+  @moduledoc """
+    Proxy configuration. See `SmppProxy.CLI`.
+  """
+
   defstruct [
     :mc_port,
     :mc_system_id,
@@ -23,6 +27,7 @@ defmodule SmppProxy.Config do
           receivers_whitelist: list(String.t())
         }
 
+  @spec new(Enumerable.t()) :: t()
   def new(enum) do
     struct(__MODULE__, enum)
   end

@@ -1,4 +1,8 @@
 defmodule SmppProxy.FactoryHelpers do
+  @moduledoc """
+  Wrappers for `SMPPEX.Pdu.Factory`.
+  """
+
   alias SMPPEX.Pdu
 
   @responses %{
@@ -17,10 +21,32 @@ defmodule SmppProxy.FactoryHelpers do
   }
   @generic_nack SMPPEX.Protocol.CommandNames.id_by_name(:generic_nack) |> elem(1)
 
+  @doc """
+  Build response for given pdu. Returns :generic_nack for unknown/unparsed pdus.
+
+  ## Examples
+
+  returns submit_sm_resp pdu for submit_sm:
+
+      iex> resp = SMPPEX.Pdu.Factory.submit_sm("from", "to", "text") |> SmppProxy.FactoryHelpers.build_response_pdu(2)
+      iex> assert SMPPEX.Pdu.command_name(resp)
+      :submit_sm_resp
+      iex> assert SMPPEX.Pdu.command_status(resp)
+      2
+
+  returns generic_nack pdu for unknown pdus:
+
+      iex> resp = SMPPEX.Pdu.new({-1, 0, 0}) |> SmppProxy.FactoryHelpers.build_response_pdu(2)
+      iex> SMPPEX.Pdu.command_name(resp)
+      :generic_nack
+      iex> assert SMPPEX.Pdu.command_status(resp)
+      2
+  """
   @spec build_response_pdu(SMPPEX.Pdu.t() | SMPPEX.RawPdu.t(), any()) :: SMPPEX.Pdu.t()
+  @spec build_response_pdu(SMPPEX.Pdu.t() | SMPPEX.RawPdu.t(), any(), [any()]) :: SMPPEX.Pdu.t()
+
   def build_response_pdu(pdu, code_or_name), do: build_response_pdu(pdu, code_or_name, [])
 
-  @spec build_response_pdu(SMPPEX.Pdu.t() | SMPPEX.RawPdu.t(), any(), [any()]) :: SMPPEX.Pdu.t()
   def build_response_pdu(pdu, error_name, args) when is_atom(error_name) do
     error_code = Pdu.Errors.code_by_name(error_name)
     build_response_pdu(pdu, error_code, args)

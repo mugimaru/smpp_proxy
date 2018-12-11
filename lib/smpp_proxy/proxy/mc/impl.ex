@@ -73,7 +73,7 @@ defmodule SmppProxy.Proxy.MC.Impl do
   Returns:
     * `{:bind_error, bind_resp_pdu}` if `pdu` is a bind_resp with command status != 0;
     * `{:bound, bind_resp_pdu}` if `pdu` is a bind_resp with command status == 0;
-    * `{:ok, resp} if `pdu` is not a bind resp;
+    * `{:ok, resp}` if `pdu` is not a bind resp;
 
   Returned pdus are built as a reply to proxy client's (ESME) binds/submits and they are expected to be sent to the proxy client.
   """

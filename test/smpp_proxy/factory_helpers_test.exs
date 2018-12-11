@@ -1,20 +1,9 @@
 defmodule SmppProxy.FactoryHelpersTest do
   use ExUnit.Case, async: true
+  doctest SmppProxy.FactoryHelpers
 
   alias SMPPEX.Pdu
   import SmppProxy.FactoryHelpers
-
-  test "returns submit_sm_resp pdu for submit_sm" do
-    resp = Pdu.Factory.submit_sm("from", "to", "text") |> build_response_pdu(2)
-    assert Pdu.command_name(resp) == :submit_sm_resp
-    assert Pdu.command_status(resp) == 2
-  end
-
-  test "returns generic_nack pdu for unknown pdus" do
-    resp = Pdu.new({-1, 0, 0}) |> build_response_pdu(2)
-    assert Pdu.command_name(resp) == :generic_nack
-    assert Pdu.command_status(resp) == 2
-  end
 
   test "supports status names alongside with status codes" do
     error_name = :RINVNUMDESTS

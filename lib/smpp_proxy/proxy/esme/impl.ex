@@ -8,7 +8,16 @@ defmodule SmppProxy.Proxy.ESME.Impl do
   alias SmppProxy.Proxy.PduStorage
 
   @doc """
-  Attempts to proxy pdu from MC to ESME.
+  Handles pdu from proxy target (MC).
+
+  Sends pdu to proxy client (ESME) if pdu can be proxied and returns `{:ok, :proxied}`.
+  Returns `{:error, response_pdu}` if pdu haven't passed senders/receivers whitelist checks.
+
+  ### Whitelist checks
+
+  Whitelist checks are only applied to the pdus with source/dest address fields (see `SmppProxy.Config` :senders_whitelist and `:receivers_whitelist`).
+   * destination address must be in senders_whitelist if senders_whitelist is not empty.
+   * source address must be in receivers_whitelist if senders_whitelist is not empty.
   """
   @spec handle_pdu_from_mc(Pdu.t() | RawPdu.t(), %{pdu_storage: pid, mc_session: pid, config: Config.t()}) ::
           {:ok, :proxied} | {:error, Pdu.t()}
@@ -24,14 +33,18 @@ defmodule SmppProxy.Proxy.ESME.Impl do
     end
   end
 
-  @doc "Handles response pdu from MC."
+  @doc """
+  Handles proxy target (MC) responses. See `SmppProxy.Proxy.MC.handle_mc_resp/3`.
+  """
   @spec handle_resp_from_mc(resp_pdu :: Pdu.t(), original_pdu :: Pdu.t(), mc_session :: pid) :: :ok
 
   def handle_resp_from_mc(pdu, original_pdu, proxy_mc_session) do
     SmppProxy.Proxy.MC.handle_mc_resp(proxy_mc_session, pdu, original_pdu)
   end
 
-  @doc "Handles response pdu from ESME."
+  @doc """
+  Handles response pdus from proxy client (ESME).
+  """
   @spec handle_resp_from_esme(pdu :: Pdu.t(), esme_original_pdu :: Pdu.t(), pdu_storage :: pid) :: {:ok, Pdu.t()}
 
   def handle_resp_from_esme(pdu, esme_original_pdu, pdu_storage) do

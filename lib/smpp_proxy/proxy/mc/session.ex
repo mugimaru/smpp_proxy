@@ -1,4 +1,8 @@
 defmodule SmppProxy.Proxy.MC.Session do
+  @moduledoc """
+  `SMPPEX.Session` server that represents connection between proxy client (ESME) and ProxyMC.
+  """
+
   alias SMPPEX.{Pdu, Session}
   alias SmppProxy.Proxy.MC.Impl
 

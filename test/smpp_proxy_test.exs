@@ -1,9 +1,11 @@
 defmodule SmppProxyTest do
   use ExUnit.Case, async: false
   doctest SmppProxy
+  doctest SmppProxy.Proxy.PduStorage
 
-  alias SMPPEX.{Pdu, ESME.Sync}
-  alias Pdu.Factory, as: PduFactory
+  alias SMPPEX.ESME.Sync
+  alias SMPPEX.Pdu
+  alias SMPPEX.Pdu.Factory, as: PduFactory
 
   @mc_port (System.get_env("SMPP_PROXY_MC_PORT") || "5051") |> String.to_integer()
   @proxy_mc_port (System.get_env("SMPP_PROXY_ESME_PORT") || "5050") |> String.to_integer()
