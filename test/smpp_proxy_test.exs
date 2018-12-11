@@ -2,6 +2,7 @@ defmodule SmppProxyTest do
   use ExUnit.Case, async: false
   doctest SmppProxy
   doctest SmppProxy.Proxy.PduStorage
+  doctest SmppProxy.PduPrinter
 
   alias SMPPEX.ESME.Sync
   alias SMPPEX.Pdu
@@ -43,6 +44,8 @@ defmodule SmppProxyTest do
     after
       :ok = GenServer.stop(proxy)
       :ok = SMPPEX.MC.stop(mc)
+      # to unsure ranch has freed up ports
+      :timer.sleep(100)
     end
   end
 

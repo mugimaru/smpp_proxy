@@ -33,7 +33,7 @@ defmodule SmppProxy.Proxy.MC.Impl do
     if allowed_to_proxy?(pdu, config) do
       PduStorage.store(pdu_storage, pdu)
       SMPPEX.Session.send_pdu(proxy_esme, pdu)
-
+      Logger.debug(fn -> "  " <> "ProxyESME->MC " <> SmppProxy.PduPrinter.format(pdu) end)
       {:ok, :proxied}
     else
       {:error, FactoryHelpers.build_response_pdu(pdu, :RINVSRCADR)}
