@@ -14,7 +14,6 @@ defmodule SmppProxyTest do
   @text "text"
 
   @config SmppProxy.Config.new(%{
-            bind_mode: :trx,
             mc_port: @proxy_mc_port,
             esme_port: @mc_port,
             esme_host: @host,

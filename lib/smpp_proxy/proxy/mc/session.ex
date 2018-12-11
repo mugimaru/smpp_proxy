@@ -9,12 +9,12 @@ defmodule SmppProxy.Proxy.MC.Session do
   @type bind_state :: :bound | :unbound
 
   @type state :: %{
-    config: SmppProxy.Config.t(),
-    mc_bind_pdu: Pdu.t(),
-    esme: pid,
-    pdu_storage: pid,
-    bind_state: bind_state()
-  }
+          config: SmppProxy.Config.t(),
+          mc_bind_pdu: Pdu.t(),
+          esme: pid,
+          pdu_storage: pid,
+          bind_state: bind_state()
+        }
 
   @impl true
   def init(_socket, _transport, %SmppProxy.Config{} = args) do
@@ -31,7 +31,7 @@ defmodule SmppProxy.Proxy.MC.Session do
   def handle_pdu(pdu, %{bind_state: :unbound} = state) do
     Logger.debug(fn -> "ProxyMC: handling bind request" end)
 
-    case Impl.handle_bind_request(pdu, state.config) do
+    case Impl.handle_bind_request(self(), pdu, state.config) do
       {:ok, proxy_esme_session} ->
         {:ok, %{state | esme: proxy_esme_session, mc_bind_pdu: pdu}}
 
@@ -65,23 +65,21 @@ defmodule SmppProxy.Proxy.MC.Session do
 
   @impl true
   def handle_call({:handle_mc_resp, pdu, original_pdu}, _from, state) do
-    if SMPPEX.Pdu.command_name(pdu) in [:bind_transceiver_resp, :bind_transmitter_resp, :bind_receiver_resp] do
-      case Impl.handle_mc_bind_resp(pdu, state.mc_bind_pdu) do
-        {:ok, bind_resp} ->
-          Logger.debug(fn -> "ProxyMC(#{state.bind_state}): ProxyESME bound" end)
-          {:reply, :ok, [bind_resp], %{state | mc_bind_pdu: nil, bind_state: :bound}}
+    case Impl.handle_mc_resp(pdu, original_pdu, state.pdu_storage, state.mc_bind_pdu) do
+      {:bound, %Pdu{} = bind_resp} ->
+        Logger.debug(fn -> "ProxyMC(#{state.bind_state}): ProxyESME bound" end)
+        {:reply, :ok, [bind_resp], %{state | mc_bind_pdu: nil, bind_state: :bound}}
 
-        {:error, bind_resp} ->
-          Logger.debug(fn ->
-            error_desc = SMPPEX.Pdu.command_status(pdu) |> SMPPEX.Pdu.Errors.description()
-            "ProxyMC(#{state.bind_state}): ProxyESME bind error #{error_desc}"
-          end)
+      {:bind_error, %Pdu{} = bind_resp} ->
+        Logger.debug(fn ->
+          error_desc = SMPPEX.Pdu.command_status(pdu) |> SMPPEX.Pdu.Errors.description()
+          "ProxyMC(#{state.bind_state}): ProxyESME bind error #{error_desc}"
+        end)
 
-          {:reply, :ok, [bind_resp], %{state | mc_bind_pdu: nil}}
-      end
-    else
-      {:ok, resp} = Impl.handle_mc_resp(pdu, original_pdu, state.pdu_storage)
-      {:reply, :ok, [resp], state}
+        {:reply, :ok, [bind_resp], %{state | mc_bind_pdu: nil}}
+
+      {:ok, %Pdu{} = resp} ->
+        {:reply, :ok, [resp], state}
     end
   end
 end

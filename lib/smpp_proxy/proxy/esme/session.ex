@@ -9,10 +9,10 @@ defmodule SmppProxy.Proxy.ESME.Session do
   defstruct config: nil, mc_session: nil, pdu_storage: nil
 
   @type state :: %{
-    config: SmppProxy.Config.t(),
-    mc_session: pid,
-    pdu_storage: pid
-  }
+          config: SmppProxy.Config.t(),
+          mc_session: pid,
+          pdu_storage: pid
+        }
 
   @spec start_link({mc_session :: pid, config :: SmppProxy.Config.t()}) :: {:ok, pid}
   def start_link({mc_session, %SmppProxy.Config{} = config}) do

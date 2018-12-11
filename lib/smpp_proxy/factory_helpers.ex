@@ -33,7 +33,7 @@ defmodule SmppProxy.FactoryHelpers do
 
       command_name ->
         apply(Pdu.Factory, command_name, [status_code | args])
-
-    end |> Pdu.as_reply_to(pdu)
+    end
+    |> Pdu.as_reply_to(pdu)
   end
 end

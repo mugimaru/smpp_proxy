@@ -3,7 +3,7 @@ defmodule SmppProxy.CLI do
     app_config = config() |> Optimus.parse!(args)
 
     if app_config.flags[:debug] do
-      Logger.configure(level: :debug) |> IO.inspect(label: :debug_flag)
+      Logger.configure(level: :debug)
     end
 
     SmppProxy.Config.new(app_config.options) |> SmppProxy.Proxy.start_link()
@@ -26,19 +26,6 @@ defmodule SmppProxy.CLI do
         ]
       ],
       options: [
-        bind_mode: [
-          short: "-b",
-          long: "--bind-mode",
-          help: "MC/ESME bind mode. `trx` - transceiver, `rx` - receiver, `tx` - transmitter.",
-          parser: fn v ->
-            if v in ["trx", "rx", "tx"] do
-              {:ok, String.to_atom(v)}
-            else
-              {:error, "Unknown bind mode"}
-            end
-          end,
-          default: :trx
-        ],
         mc_port: [
           short: "-P",
           long: "--mc-port",
