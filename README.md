@@ -21,10 +21,6 @@ build escript
 
 rut it
 
-    ./smpp_proxy  --mc-id panda --mc-password pwd --esme-id panda --esme-password pwd2 --esme-port 5051 --mc-port 5050 --debug
+    ./smpp_proxy  --mc-id panda --mc-password pwd --esme-id panda --esme-password pwd2 --esme-port 5051 --mc-port 5050 --rate_limit 10rps --debug
 
 run `./smpp_proxy --help` to print available options.
-
-## TODO
-
-- [ ] Implement RPS limiting

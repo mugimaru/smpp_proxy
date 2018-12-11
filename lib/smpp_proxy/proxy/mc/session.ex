@@ -8,7 +8,7 @@ defmodule SmppProxy.Proxy.MC.Session do
 
   use Session
 
-  defstruct config: nil, mc_bind_pdu: nil, esme: nil, pdu_storage: nil, bind_state: :unbound
+  defstruct config: nil, mc_bind_pdu: nil, esme: nil, pdu_storage: nil, rate_limiter: nil, bind_state: :unbound
 
   @type bind_state :: :bound | :unbound
 
@@ -17,13 +17,21 @@ defmodule SmppProxy.Proxy.MC.Session do
           mc_bind_pdu: Pdu.t(),
           esme: pid,
           pdu_storage: pid,
+          rate_limiter: pid | nil,
           bind_state: bind_state()
         }
 
   @impl true
-  def init(_socket, _transport, %SmppProxy.Config{} = args) do
+  def init(_socket, _transport, %{config: %SmppProxy.Config{} = config, rate_limiter: rate_limiter}) do
     {:ok, storage} = SmppProxy.Proxy.PduStorage.start_link()
-    {:ok, struct(__MODULE__, config: args, pdu_storage: storage)}
+
+    {:ok,
+     struct(
+       __MODULE__,
+       config: config,
+       rate_limiter: rate_limiter,
+       pdu_storage: storage
+     )}
   end
 
   @impl true
@@ -50,7 +58,7 @@ defmodule SmppProxy.Proxy.MC.Session do
   def handle_pdu(pdu, %{bind_state: :bound} = state) do
     log_pdu(pdu, :in)
 
-    case Impl.proxy_pdu(pdu, state.pdu_storage, state.esme, state.config) do
+    case Impl.proxy_pdu(pdu, state.pdu_storage, state.esme, state.rate_limiter, state.config) do
       {:ok, :proxied} ->
         {:ok, state}
 

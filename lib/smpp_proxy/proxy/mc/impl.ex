@@ -26,17 +26,27 @@ defmodule SmppProxy.Proxy.MC.Impl do
    * source address must be in senders_whitelist if senders_whitelist is not empty.
    * destination address must be in receivers_whitelist if senders_whitelist is not empty.
   """
-  @spec proxy_pdu(pdu :: Pdu.t(), pdu_storage :: pid, proxy_esme :: pid, config :: Config.t()) ::
-          {:ok, :proxied} | {:error, Pdu.t()}
+  @spec proxy_pdu(
+          pdu :: Pdu.t(),
+          pdu_storage :: pid,
+          proxy_esme :: pid,
+          rate_limiter :: pid | nil,
+          config :: Config.t()
+        ) :: {:ok, :proxied} | {:error, Pdu.t()}
 
-  def proxy_pdu(pdu, pdu_storage, proxy_esme, %Config{} = config) do
-    if allowed_to_proxy?(pdu, config) do
-      PduStorage.store(pdu_storage, pdu)
-      SMPPEX.Session.send_pdu(proxy_esme, pdu)
-      Logger.debug(fn -> "  " <> "ProxyESME->MC " <> SmppProxy.PduPrinter.format(pdu) end)
-      {:ok, :proxied}
-    else
-      {:error, FactoryHelpers.build_response_pdu(pdu, :RINVSRCADR)}
+  def proxy_pdu(pdu, pdu_storage, proxy_esme, rate_limiter, %Config{} = config) do
+    case check_limitations(pdu, rate_limiter, config) do
+      :ok ->
+        PduStorage.store(pdu_storage, pdu)
+        SMPPEX.Session.send_pdu(proxy_esme, pdu)
+        Logger.debug(fn -> "  " <> "ProxyESME->MC " <> SmppProxy.PduPrinter.format(pdu) end)
+        {:ok, :proxied}
+
+      :rate_limit_exceeded ->
+        {:error, FactoryHelpers.build_response_pdu(pdu, :RTHROTTLED)}
+
+      :not_in_whitelist ->
+        {:error, FactoryHelpers.build_response_pdu(pdu, :RINVSRCADR)}
     end
   end
 
@@ -112,14 +122,26 @@ defmodule SmppProxy.Proxy.MC.Impl do
     Pdu.field(bind_pdu, :system_id) == id && Pdu.field(bind_pdu, :password) == pwd
   end
 
-  defp allowed_to_proxy?(%{mandatory: %{source_addr: source, destination_addr: dest}}, %{
+  defp check_limitations(pdu, rate_limiter, config) do
+    with :ok <- check_whitelists(pdu, config) do
+      check_rate_limits(rate_limiter)
+    end
+  end
+
+  defp check_rate_limits(nil), do: :ok
+
+  defp check_rate_limits(pid) do
+    if SmppProxy.RateLimiter.take(pid), do: :ok, else: :rate_limit_exceeded
+  end
+
+  defp check_whitelists(%{mandatory: %{source_addr: source, destination_addr: dest}}, %{
          senders_whitelist: sw,
          receivers_whitelist: rw
        }) do
-    (sw == [] || source in sw) && (rw == [] || dest in rw)
+    if (sw == [] || source in sw) && (rw == [] || dest in rw), do: :ok, else: :not_in_whitelist
   end
 
-  defp allowed_to_proxy?(_pdu, _config), do: true
+  defp check_whitelists(_pdu, _config), do: :ok
 
   defp start_and_bind_proxy_esme(
          proxy_mc_pid,

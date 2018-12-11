@@ -12,7 +12,8 @@ defmodule SmppProxy.Config do
     :esme_system_id,
     :esme_password,
     :senders_whitelist,
-    :receivers_whitelist
+    :receivers_whitelist,
+    :rate_limit
   ]
 
   @type t :: %__MODULE__{
@@ -24,7 +25,8 @@ defmodule SmppProxy.Config do
           esme_system_id: String.t(),
           esme_password: String.t(),
           senders_whitelist: list(String.t()),
-          receivers_whitelist: list(String.t())
+          receivers_whitelist: list(String.t()),
+          rate_limit: nil | {non_neg_integer, :second | :minute}
         }
 
   @spec new(Enumerable.t()) :: t()

@@ -3,6 +3,7 @@ defmodule SmppProxyTest do
   doctest SmppProxy
   doctest SmppProxy.Proxy.PduStorage
   doctest SmppProxy.PduPrinter
+  doctest SmppProxy.RateLimiter
 
   alias SMPPEX.ESME.Sync
   alias SMPPEX.Pdu
@@ -209,6 +210,19 @@ defmodule SmppProxyTest do
         :ok = FakeMC.send_pdu(mc_session, deliver_sm)
         [pdu: %Pdu{} = received_pdu] = SMPPEX.ESME.Sync.wait_for_pdus(esme, 1000)
         assert Pdu.field(received_pdu, :short_message) == Pdu.field(deliver_sm, :short_message)
+      end)
+    end
+
+    test "returns an error if RPS exceeded" do
+      with_proxy_up(%{@config | rate_limit: {1, :second}}, fn %{esme: esme} ->
+        {:ok, bind_resp} = Sync.request(esme, PduFactory.bind_transceiver(@config.mc_system_id, @config.mc_password))
+        assert bind_resp.command_status == 0
+        {:ok, resp} = Sync.request(esme, PduFactory.submit_sm(@from, @to, @text))
+        assert resp.command_status == 0
+        {:ok, resp} = Sync.request(esme, PduFactory.submit_sm(@from, @to, @text))
+
+        assert SMPPEX.Pdu.Errors.description(resp.command_status) ==
+                 "Throttling error (ESME has exceeded allowed msg limits)"
       end)
     end
   end

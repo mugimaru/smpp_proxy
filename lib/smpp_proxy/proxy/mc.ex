@@ -6,10 +6,10 @@ defmodule SmppProxy.Proxy.MC do
   require Logger
 
   @doc "Starts ProxyMC with given `SmppProxy.Config`."
-  @spec start(config :: SmppProxy.Config.t()) :: {:ok, pid}
+  @spec start(%{config: SmppProxy.Config.t(), rate_limiter: nil | pid}) :: {:ok, pid}
 
-  def start(%SmppProxy.Config{} = config) do
-    {:ok, mc} = SMPPEX.MC.start({SmppProxy.Proxy.MC.Session, config}, transport_opts: [port: config.mc_port])
+  def start(%{config: %SmppProxy.Config{} = config, rate_limiter: _} = args) do
+    {:ok, mc} = SMPPEX.MC.start({SmppProxy.Proxy.MC.Session, args}, transport_opts: [port: config.mc_port])
 
     Logger.info(fn ->
       "Ready to accept connections on #{config.mc_port} with #{config.mc_system_id}/#{config.mc_password}"
