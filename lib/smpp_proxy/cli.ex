@@ -55,7 +55,7 @@ defmodule SmppProxy.CLI do
         esme_host: [
           short: "-h",
           long: "--esme-host",
-          help: "IЗ or host of the proxy target",
+          help: "IP or host of the proxy target",
           default: "localhost"
         ],
         esme_port: [
@@ -78,19 +78,19 @@ defmodule SmppProxy.CLI do
         ],
         senders_whitelist: [
           short: "-S",
-          long: "--clients-whitelist",
+          long: "--senders-whitelist",
           help: "Only allow specified senders (submits from source addr / delivers to destination addr)",
           multiple: true
         ],
         receivers_whitelist: [
           short: "-R",
-          long: "--services-whitelist",
+          long: "--receivers-whitelist",
           help: "Only allow specified receivers (submits to destination addr / delivers from destination addr)",
           multiple: true
         ],
         rate_limit: [
           long: "--rate-limit",
-          help: "Limits number of outgoing PDU. `10rps` - 10 requestes per second; `10rpm` - 10 requests per minute.",
+          help: "Limits number of outgoing PDU. `10rps` - 10 requests per second; `10rpm` - 10 requests per minute.",
           parser: fn s ->
             case Integer.parse(s) do
               {n, "rps"} ->
