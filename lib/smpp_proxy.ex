@@ -1,6 +1,5 @@
 defmodule SmppProxy do
   @moduledoc """
-  SMPP 3.4 compliant proxy.
 
   ## Glossary
 
@@ -11,7 +10,7 @@ defmodule SmppProxy do
   ## Structure
 
   smpp_proxy structure might be described as:
-      ESME <-> ProxyMC <-> ProxyESME <-> MC
+      ESME(proxy client) <-> [ProxyMC <-> ProxyESME] <-> MC(proxy target)
 
   ## Flow
 
@@ -22,11 +21,10 @@ defmodule SmppProxy do
   5. `ProxyMC` sends its own bind_resp to `ESME`.
   6. `ProxyMC` proxies `ESME` submits and resps to `MC` (through `ProxyESME`).
   7. `ProxyESME` proxies `MC` delivers and resps to `ESME` (through `ProxyMC`)
+
   """
 
   @doc "Starts smpp proxy with given `SmppProxy.Config`."
-  @spec start(config :: SmppProxy.Config.t()) :: term
-
   def start(%SmppProxy.Config{} = config) do
     SmppProxy.Proxy.start_link(config)
   end

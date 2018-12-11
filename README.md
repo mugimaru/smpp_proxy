@@ -1,21 +1,30 @@
 # SmppProxy
 
-**TODO: Add description**
+SMPP 3.4 compliant proxy.
 
-## Installation
+SmppProxy is aimed to provide third parties a temporary access to MC with different credentials,
+optional source/destination addresses whitelist and RPS limit.
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `smpp_proxy` to your list of dependencies in `mix.exs`:
+## Docs
 
-```elixir
-def deps do
-  [
-    {:smpp_proxy, "~> 0.1.0"}
-  ]
-end
-```
+build docs with
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/smpp_proxy](https://hexdocs.pm/smpp_proxy).
+    mix docs
 
+Start with `docs/index.html`
+
+## Usage
+
+build escript
+
+    mix escript.build
+
+rut it
+
+    ./smpp_proxy  --mc-id panda --mc-password pwd --esme-id panda --esme-password pwd2 --esme-port 5051 --mc-port 5050 --debug
+
+run `./smpp_proxy --help` to print available options.
+
+## TODO
+
+- [ ] Implement RPS limiting
