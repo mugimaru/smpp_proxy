@@ -5,8 +5,8 @@ defmodule SmppProxyTest do
   alias SMPPEX.{Pdu, ESME.Sync}
   alias Pdu.Factory, as: PduFactory
 
-  @mc_port 5051
-  @proxy_mc_port 5050
+  @mc_port (System.get_env("SMPP_PROXY_MC_PORT") || "5051") |> String.to_integer()
+  @proxy_mc_port (System.get_env("SMPP_PROXY_ESME_PORT") || "5050") |> String.to_integer()
   @host "localhost"
 
   @from "from"
