@@ -25,7 +25,7 @@ defmodule SmppProxy.CLI do
         short: "-I",
         long: "--mc-id",
         help: "system_id for proxy MC clients",
-        default: "panda"
+        required: true
       ],
       mc_password: [
         short: "-W",
@@ -36,19 +36,19 @@ defmodule SmppProxy.CLI do
       esme_host: [
         short: "-h",
         long: "--esme-host",
-        help: "Ip or host of the target MC",
+        help: "IЗ or host of the proxy target",
         default: "localhost"
       ],
       esme_port: [
         short: "-p",
         long: "--esme-port",
-        help: "TCP port of the target MC",
+        help: "TCP port of the proxy target",
         parser: :integer
       ],
       esme_system_id: [
         short: "-i",
         long: "--esme-id",
-        help: "System id to bind to the target MC",
+        help: "System id to bind to the proxy target",
         required: true
       ],
       esme_password: [
